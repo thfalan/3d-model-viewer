@@ -2,10 +2,10 @@
 
 import { Suspense, useState, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment } from "@react-three/drei";
+import { OrbitControls, Environment, GizmoHelper, GizmoViewport } from "@react-three/drei";
 import Model from "./Model";
-import LightControl from "./LightControl";
 import CopyEmbedButton from "./CopyEmbedButton";
+import RTIViewer from "./RTIViewer";
 
 interface ViewerProps {
   modelUrl: string;
@@ -24,7 +24,7 @@ function LoadingOverlay({ label }: { label: string }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "rgba(255,255,255,0.5)",
+        color: "rgba(0,0,0,0.4)",
         fontSize: 12,
         letterSpacing: 2,
         textTransform: "uppercase",
@@ -37,7 +37,7 @@ function LoadingOverlay({ label }: { label: string }) {
   );
 }
 
-function PanelLabel({ children }: { children: React.ReactNode }) {
+function PanelLabel({ children, dark }: { children: React.ReactNode; dark?: boolean }) {
   return (
     <div
       style={{
@@ -48,7 +48,7 @@ function PanelLabel({ children }: { children: React.ReactNode }) {
         fontWeight: 600,
         letterSpacing: 1.5,
         textTransform: "uppercase",
-        color: "rgba(255,255,255,0.35)",
+        color: dark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.35)",
         zIndex: 6,
         pointerEvents: "none",
       }}
@@ -65,21 +65,9 @@ export default function Viewer({
   initialLight,
   view = "both",
 }: ViewerProps) {
-  const [rtiLight, setRtiLight] =
-    useState<[number, number, number]>(initialLight);
-  const [rtiIntensity, setRtiIntensity] = useState(2.0);
   const [loadedLeft, setLoadedLeft] = useState(false);
-  const [loadedRight, setLoadedRight] = useState(false);
-
-  const handleRtiLightChange = useCallback(
-    (x: number, y: number, z: number) => {
-      setRtiLight([x, y, z]);
-    },
-    []
-  );
 
   const handleLeftLoaded = useCallback(() => setLoadedLeft(true), []);
-  const handleRightLoaded = useCallback(() => setLoadedRight(true), []);
 
   const show3d = view === "both" || view === "3d";
   const showRti = view === "both" || view === "rti";
@@ -92,27 +80,28 @@ export default function Viewer({
             flex: 1,
             position: "relative",
             ...(showRti
-              ? { borderRight: "1px solid rgba(255,255,255,0.08)" }
+              ? { borderRight: "1px solid rgba(0,0,0,0.1)" }
               : {}),
           }}
         >
-          <PanelLabel>3D View</PanelLabel>
+          <PanelLabel dark>3D View</PanelLabel>
           <CopyEmbedButton view="3d" modelFile={modelFile} />
           <Canvas
             shadows
             camera={{ position: [0, 2, 6], fov: 45 }}
             gl={{ antialias: true, alpha: false }}
-            style={{ background: "#1a1a2e" }}
+            style={{ background: "#e8e8ec" }}
           >
-            <ambientLight intensity={0.4} />
+            <ambientLight intensity={0.6} />
             <directionalLight
               position={[3, 5, 2]}
-              intensity={1.5}
+              intensity={1.2}
               castShadow
             />
+            <directionalLight position={[-3, 3, -2]} intensity={0.4} />
             <Suspense fallback={null}>
               <Model url={modelUrl} onLoaded={handleLeftLoaded} />
-              <Environment preset="studio" environmentIntensity={0.15} />
+              <Environment preset="studio" environmentIntensity={0.2} />
             </Suspense>
             <OrbitControls
               target={[0, 0, 0]}
@@ -123,6 +112,13 @@ export default function Viewer({
               minDistance={1}
               maxDistance={30}
             />
+            <GizmoHelper alignment="bottom-left" margin={[60, 60]}>
+              <GizmoViewport
+                axisColors={["#e74c3c", "#2ecc71", "#3498db"]}
+                labelColor="black"
+              />
+            </GizmoHelper>
+            <gridHelper args={[10, 10, "#ccc", "#ddd"]} />
           </Canvas>
           {!loadedLeft && <LoadingOverlay label="Loading model..." />}
         </div>
@@ -130,45 +126,9 @@ export default function Viewer({
 
       {showRti && (
         <div style={{ flex: 1, position: "relative" }}>
-          <PanelLabel>RTI Light View</PanelLabel>
+          <PanelLabel>RTI View</PanelLabel>
           <CopyEmbedButton view="rti" modelFile={modelFile} />
-          <Canvas
-            shadows
-            camera={{ position: [0, 6, 0.01], fov: 45 }}
-            gl={{ antialias: true, alpha: false }}
-            style={{ background: "#12121e" }}
-          >
-            <ambientLight intensity={0.08} />
-            <directionalLight
-              position={rtiLight}
-              intensity={rtiIntensity}
-              castShadow
-              shadow-mapSize-width={2048}
-              shadow-mapSize-height={2048}
-            />
-            <Suspense fallback={null}>
-              <Model url={modelUrl} flat onLoaded={handleRightLoaded} />
-            </Suspense>
-            <OrbitControls
-              target={[0, 0, 0]}
-              enableRotate={false}
-              enablePan
-              enableZoom
-              minDistance={2}
-              maxDistance={15}
-            />
-          </Canvas>
-
-          <LightControl
-            onChange={handleRtiLightChange}
-            initialX={initialLight[0]}
-            initialY={initialLight[1]}
-            initialZ={initialLight[2]}
-            intensity={rtiIntensity}
-            onIntensityChange={setRtiIntensity}
-          />
-
-          {!loadedRight && <LoadingOverlay label="Loading model..." />}
+          <RTIViewer url="/rti/info.json" />
         </div>
       )}
     </div>
