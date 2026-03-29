@@ -12,7 +12,7 @@ interface ViewerProps {
   initialLight: [number, number, number];
 }
 
-function LoadingIndicator() {
+function LoadingOverlay({ label }: { label: string }) {
   return (
     <div
       style={{
@@ -21,28 +21,38 @@ function LoadingIndicator() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "rgba(255,255,255,0.6)",
-        fontSize: 14,
-        fontFamily: "system-ui, sans-serif",
+        color: "rgba(255,255,255,0.5)",
+        fontSize: 12,
         letterSpacing: 2,
         textTransform: "uppercase",
-        zIndex: 5,
         pointerEvents: "none",
+        zIndex: 5,
       }}
     >
-      Loading model...
+      {label}
     </div>
   );
 }
 
-function ModelWithCallback({
-  url,
-  onLoaded,
-}: {
-  url: string;
-  onLoaded: () => void;
-}) {
-  return <Model url={url} onLoaded={onLoaded} />;
+function PanelLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 12,
+        left: 16,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+        color: "rgba(255,255,255,0.35)",
+        zIndex: 6,
+        pointerEvents: "none",
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 export default function Viewer({
@@ -50,61 +60,101 @@ export default function Viewer({
   autoRotate,
   initialLight,
 }: ViewerProps) {
-  const [light, setLight] =
+  const [rtiLight, setRtiLight] =
     useState<[number, number, number]>(initialLight);
-  const [intensity, setIntensity] = useState(2.0);
-  const [loaded, setLoaded] = useState(false);
+  const [rtiIntensity, setRtiIntensity] = useState(2.0);
+  const [loadedLeft, setLoadedLeft] = useState(false);
+  const [loadedRight, setLoadedRight] = useState(false);
 
-  const handleLightChange = useCallback((x: number, y: number, z: number) => {
-    setLight([x, y, z]);
-  }, []);
+  const handleRtiLightChange = useCallback(
+    (x: number, y: number, z: number) => {
+      setRtiLight([x, y, z]);
+    },
+    []
+  );
 
-  const handleLoaded = useCallback(() => {
-    setLoaded(true);
-  }, []);
+  const handleLeftLoaded = useCallback(() => setLoadedLeft(true), []);
+  const handleRightLoaded = useCallback(() => setLoadedRight(true), []);
 
   return (
-    <>
-      <Canvas
-        shadows
-        camera={{ position: [0, 2, 8], fov: 45 }}
-        gl={{ antialias: true, alpha: false }}
-        style={{ background: "#1a1a2e" }}
+    <div style={{ display: "flex", width: "100%", height: "100%" }}>
+      {/* Left panel: free 3D orbit */}
+      <div
+        style={{
+          flex: 1,
+          position: "relative",
+          borderRight: "1px solid rgba(255,255,255,0.08)",
+        }}
       >
-        <ambientLight intensity={0.15} />
-        <directionalLight
-          position={light}
-          intensity={intensity}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-        />
-        <Suspense fallback={null}>
-          <ModelWithCallback url={modelUrl} onLoaded={handleLoaded} />
-          <Environment preset="studio" environmentIntensity={0.1} />
-        </Suspense>
-        <OrbitControls
-          autoRotate={autoRotate}
-          autoRotateSpeed={0.5}
-          enableDamping
-          dampingFactor={0.1}
-          minDistance={1}
-          maxDistance={30}
-        />
-      </Canvas>
+        <PanelLabel>3D View</PanelLabel>
+        <Canvas
+          shadows
+          camera={{ position: [0, 2, 8], fov: 45 }}
+          gl={{ antialias: true, alpha: false }}
+          style={{ background: "#1a1a2e" }}
+        >
+          <ambientLight intensity={0.4} />
+          <directionalLight
+            position={[3, 5, 2]}
+            intensity={1.5}
+            castShadow
+          />
+          <Suspense fallback={null}>
+            <Model url={modelUrl} onLoaded={handleLeftLoaded} />
+            <Environment preset="studio" environmentIntensity={0.15} />
+          </Suspense>
+          <OrbitControls
+            autoRotate={autoRotate}
+            autoRotateSpeed={0.5}
+            enableDamping
+            dampingFactor={0.1}
+            minDistance={1}
+            maxDistance={30}
+          />
+        </Canvas>
+        {!loadedLeft && <LoadingOverlay label="Loading model..." />}
+      </div>
 
-      <Suspense fallback={null}>
+      {/* Right panel: flat RTI view */}
+      <div style={{ flex: 1, position: "relative" }}>
+        <PanelLabel>RTI Light View</PanelLabel>
+        <Canvas
+          shadows
+          camera={{ position: [0, 6, 0], fov: 45, up: [0, 0, -1] }}
+          gl={{ antialias: true, alpha: false }}
+          style={{ background: "#12121e" }}
+        >
+          <ambientLight intensity={0.08} />
+          <directionalLight
+            position={rtiLight}
+            intensity={rtiIntensity}
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+          />
+          <Suspense fallback={null}>
+            <Model url={modelUrl} flat onLoaded={handleRightLoaded} />
+          </Suspense>
+          <OrbitControls
+            enableRotate={false}
+            enablePan
+            enableZoom
+            minDistance={2}
+            maxDistance={15}
+          />
+        </Canvas>
+
         <LightControl
-          onChange={handleLightChange}
+          onChange={handleRtiLightChange}
           initialX={initialLight[0]}
           initialY={initialLight[1]}
           initialZ={initialLight[2]}
-          intensity={intensity}
-          onIntensityChange={setIntensity}
+          intensity={rtiIntensity}
+          onIntensityChange={setRtiIntensity}
         />
-      </Suspense>
 
-      {!loaded && <LoadingIndicator />}
-    </>
+        {!loadedRight && <LoadingOverlay label="Loading model..." />}
+      </div>
+    </div>
   );
 }
