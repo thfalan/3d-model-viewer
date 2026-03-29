@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useMemo } from "react";
-import { useGLTF } from "@react-three/drei";
+import { useEffect, useMemo } from "react";
+import { useGLTF, Center } from "@react-three/drei";
 import * as THREE from "three";
 
 interface ModelProps {
@@ -12,25 +12,10 @@ interface ModelProps {
 
 export default function Model({ url, onLoaded, flat }: ModelProps) {
   const { scene } = useGLTF(url);
-  const groupRef = useRef<THREE.Group>(null);
 
   const clonedScene = useMemo(() => scene.clone(true), [scene]);
 
   useEffect(() => {
-    const box = new THREE.Box3().setFromObject(clonedScene);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const scale = 4 / maxDim;
-
-    clonedScene.position.sub(center);
-    clonedScene.scale.setScalar(scale);
-    clonedScene.position.multiplyScalar(scale);
-
-    if (flat) {
-      clonedScene.rotation.x = -Math.PI / 2;
-    }
-
     clonedScene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
@@ -57,11 +42,11 @@ export default function Model({ url, onLoaded, flat }: ModelProps) {
     });
 
     onLoaded?.();
-  }, [clonedScene, flat, onLoaded]);
+  }, [clonedScene, onLoaded]);
 
   return (
-    <group ref={groupRef}>
+    <Center rotation={flat ? [-Math.PI / 2, 0, 0] : undefined}>
       <primitive object={clonedScene} />
-    </group>
+    </Center>
   );
 }

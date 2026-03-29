@@ -89,7 +89,7 @@ export default function Viewer({
         <PanelLabel>3D View</PanelLabel>
         <Canvas
           shadows
-          camera={{ position: [0, 2, 8], fov: 45 }}
+          camera={{ position: [0, 2, 6], fov: 45 }}
           gl={{ antialias: true, alpha: false }}
           style={{ background: "#1a1a2e" }}
         >
@@ -104,6 +104,7 @@ export default function Viewer({
             <Environment preset="studio" environmentIntensity={0.15} />
           </Suspense>
           <OrbitControls
+            target={[0, 0, 0]}
             autoRotate={autoRotate}
             autoRotateSpeed={0.5}
             enableDamping
@@ -120,7 +121,7 @@ export default function Viewer({
         <PanelLabel>RTI Light View</PanelLabel>
         <Canvas
           shadows
-          camera={{ position: [0, 6, 0], fov: 45, up: [0, 0, -1] }}
+          camera={{ position: [0, 6, 0.01], fov: 45 }}
           gl={{ antialias: true, alpha: false }}
           style={{ background: "#12121e" }}
         >
@@ -136,6 +137,7 @@ export default function Viewer({
             <Model url={modelUrl} flat onLoaded={handleRightLoaded} />
           </Suspense>
           <OrbitControls
+            target={[0, 0, 0]}
             enableRotate={false}
             enablePan
             enableZoom
