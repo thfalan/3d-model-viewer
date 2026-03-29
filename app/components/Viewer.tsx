@@ -1,8 +1,9 @@
 "use client";
 
 import { Suspense, useState, useCallback } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Environment, GizmoHelper, GizmoViewport } from "@react-three/drei";
+import * as THREE from "three";
 import Model from "./Model";
 import CopyEmbedButton from "./CopyEmbedButton";
 import RTIViewer from "./RTIViewer";
@@ -13,6 +14,12 @@ interface ViewerProps {
   autoRotate: boolean;
   initialLight: [number, number, number];
   view?: "3d" | "rti" | "both";
+}
+
+function SceneBackground({ color }: { color: string }) {
+  const { scene } = useThree();
+  scene.background = new THREE.Color(color);
+  return null;
 }
 
 function LoadingOverlay({ label }: { label: string }) {
@@ -37,24 +44,36 @@ function LoadingOverlay({ label }: { label: string }) {
   );
 }
 
-function PanelLabel({ children, dark }: { children: React.ReactNode; dark?: boolean }) {
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <div
+    <button
+      onClick={onClick}
       style={{
-        position: "absolute",
-        top: 12,
-        left: 16,
-        fontSize: 11,
+        padding: "10px 28px",
+        fontSize: 13,
         fontWeight: 600,
-        letterSpacing: 1.5,
-        textTransform: "uppercase",
-        color: dark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.35)",
-        zIndex: 6,
-        pointerEvents: "none",
+        letterSpacing: 0.8,
+        cursor: "pointer",
+        background: active ? "#fff" : "transparent",
+        color: active ? "#1a1a2e" : "rgba(255,255,255,0.6)",
+        borderWidth: 0,
+        borderBottomWidth: 2,
+        borderStyle: "solid",
+        borderColor: active ? "#fbbf24" : "transparent",
+        transition: "all 0.15s ease",
+        borderRadius: 0,
       }}
     >
       {children}
-    </div>
+    </button>
   );
 }
 
@@ -62,36 +81,53 @@ export default function Viewer({
   modelUrl,
   modelFile,
   autoRotate,
-  initialLight,
   view = "both",
 }: ViewerProps) {
-  const [loadedLeft, setLoadedLeft] = useState(false);
+  const [activeTab, setActiveTab] = useState<"3d" | "rti">(
+    view === "rti" ? "rti" : "3d"
+  );
+  const [loadedModel, setLoadedModel] = useState(false);
 
-  const handleLeftLoaded = useCallback(() => setLoadedLeft(true), []);
+  const handleModelLoaded = useCallback(() => setLoadedModel(true), []);
 
-  const show3d = view === "both" || view === "3d";
-  const showRti = view === "both" || view === "rti";
+  const isSingleView = view === "3d" || view === "rti";
 
   return (
-    <div style={{ display: "flex", width: "100%", height: "100%" }}>
-      {show3d && (
+    <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%" }}>
+      {!isSingleView && (
         <div
           style={{
-            flex: 1,
-            position: "relative",
-            ...(showRti
-              ? { borderRight: "1px solid rgba(0,0,0,0.1)" }
-              : {}),
+            display: "flex",
+            background: "#1a1a2e",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            flexShrink: 0,
           }}
         >
-          <PanelLabel dark>3D View</PanelLabel>
+          <TabButton active={activeTab === "3d"} onClick={() => setActiveTab("3d")}>
+            3D Model
+          </TabButton>
+          <TabButton active={activeTab === "rti"} onClick={() => setActiveTab("rti")}>
+            RTI Viewer
+          </TabButton>
+        </div>
+      )}
+
+      <div style={{ flex: 1, position: "relative" }}>
+        {/* 3D panel */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: (isSingleView ? view === "3d" : activeTab === "3d") ? "block" : "none",
+          }}
+        >
           <CopyEmbedButton view="3d" modelFile={modelFile} />
           <Canvas
             shadows
             camera={{ position: [0, 2, 6], fov: 45 }}
             gl={{ antialias: true, alpha: false }}
-            style={{ background: "#e8e8ec" }}
           >
+            <SceneBackground color="#e8e8ec" />
             <ambientLight intensity={0.6} />
             <directionalLight
               position={[3, 5, 2]}
@@ -100,8 +136,8 @@ export default function Viewer({
             />
             <directionalLight position={[-3, 3, -2]} intensity={0.4} />
             <Suspense fallback={null}>
-              <Model url={modelUrl} onLoaded={handleLeftLoaded} />
-              <Environment preset="studio" environmentIntensity={0.2} />
+              <Model url={modelUrl} onLoaded={handleModelLoaded} />
+              <Environment preset="studio" environmentIntensity={0.2} environmentRotation={[0, 0, 0]} background={false} />
             </Suspense>
             <OrbitControls
               target={[0, 0, 0]}
@@ -120,17 +156,21 @@ export default function Viewer({
             </GizmoHelper>
             <gridHelper args={[10, 10, "#ccc", "#ddd"]} />
           </Canvas>
-          {!loadedLeft && <LoadingOverlay label="Loading model..." />}
+          {!loadedModel && <LoadingOverlay label="Loading model..." />}
         </div>
-      )}
 
-      {showRti && (
-        <div style={{ flex: 1, position: "relative" }}>
-          <PanelLabel>RTI View</PanelLabel>
+        {/* RTI panel */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: (isSingleView ? view === "rti" : activeTab === "rti") ? "block" : "none",
+          }}
+        >
           <CopyEmbedButton view="rti" modelFile={modelFile} />
           <RTIViewer url="/rti/info.json" />
         </div>
-      )}
+      </div>
     </div>
   );
 }
