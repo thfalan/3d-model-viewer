@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useGLTF, Center } from "@react-three/drei";
+import { Center } from "@react-three/drei";
+import { useLoader } from "@react-three/fiber";
 import * as THREE from "three";
+import { GLTFLoader } from "three-stdlib";
+import { MeshoptDecoder } from "meshoptimizer";
+
 
 interface ModelProps {
   url: string;
@@ -11,9 +15,18 @@ interface ModelProps {
 }
 
 export default function Model({ url, onLoaded, flat }: ModelProps) {
-  const { scene } = useGLTF(url);
+  const gltf = useLoader(GLTFLoader, url, (loader) => {
+    const dracoLoader = new (
+      require("three-stdlib").DRACOLoader
+    )() as InstanceType<typeof import("three-stdlib").DRACOLoader>;
+    dracoLoader.setDecoderPath(
+      "https://www.gstatic.com/draco/versioned/decoders/1.5.7/"
+    );
+    loader.setDRACOLoader(dracoLoader);
+    loader.setMeshoptDecoder(MeshoptDecoder);
+  });
 
-  const clonedScene = useMemo(() => scene.clone(true), [scene]);
+  const clonedScene = useMemo(() => gltf.scene.clone(true), [gltf.scene]);
 
   useEffect(() => {
     clonedScene.traverse((child) => {
