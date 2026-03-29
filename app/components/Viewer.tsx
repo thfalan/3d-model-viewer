@@ -5,11 +5,14 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment } from "@react-three/drei";
 import Model from "./Model";
 import LightControl from "./LightControl";
+import CopyEmbedButton from "./CopyEmbedButton";
 
 interface ViewerProps {
   modelUrl: string;
+  modelFile: string;
   autoRotate: boolean;
   initialLight: [number, number, number];
+  view?: "3d" | "rti" | "both";
 }
 
 function LoadingOverlay({ label }: { label: string }) {
@@ -57,8 +60,10 @@ function PanelLabel({ children }: { children: React.ReactNode }) {
 
 export default function Viewer({
   modelUrl,
+  modelFile,
   autoRotate,
   initialLight,
+  view = "both",
 }: ViewerProps) {
   const [rtiLight, setRtiLight] =
     useState<[number, number, number]>(initialLight);
@@ -76,87 +81,96 @@ export default function Viewer({
   const handleLeftLoaded = useCallback(() => setLoadedLeft(true), []);
   const handleRightLoaded = useCallback(() => setLoadedRight(true), []);
 
+  const show3d = view === "both" || view === "3d";
+  const showRti = view === "both" || view === "rti";
+
   return (
     <div style={{ display: "flex", width: "100%", height: "100%" }}>
-      {/* Left panel: free 3D orbit */}
-      <div
-        style={{
-          flex: 1,
-          position: "relative",
-          borderRight: "1px solid rgba(255,255,255,0.08)",
-        }}
-      >
-        <PanelLabel>3D View</PanelLabel>
-        <Canvas
-          shadows
-          camera={{ position: [0, 2, 6], fov: 45 }}
-          gl={{ antialias: true, alpha: false }}
-          style={{ background: "#1a1a2e" }}
+      {show3d && (
+        <div
+          style={{
+            flex: 1,
+            position: "relative",
+            ...(showRti
+              ? { borderRight: "1px solid rgba(255,255,255,0.08)" }
+              : {}),
+          }}
         >
-          <ambientLight intensity={0.4} />
-          <directionalLight
-            position={[3, 5, 2]}
-            intensity={1.5}
-            castShadow
-          />
-          <Suspense fallback={null}>
-            <Model url={modelUrl} onLoaded={handleLeftLoaded} />
-            <Environment preset="studio" environmentIntensity={0.15} />
-          </Suspense>
-          <OrbitControls
-            target={[0, 0, 0]}
-            autoRotate={autoRotate}
-            autoRotateSpeed={0.5}
-            enableDamping
-            dampingFactor={0.1}
-            minDistance={1}
-            maxDistance={30}
-          />
-        </Canvas>
-        {!loadedLeft && <LoadingOverlay label="Loading model..." />}
-      </div>
+          <PanelLabel>3D View</PanelLabel>
+          <CopyEmbedButton view="3d" modelFile={modelFile} />
+          <Canvas
+            shadows
+            camera={{ position: [0, 2, 6], fov: 45 }}
+            gl={{ antialias: true, alpha: false }}
+            style={{ background: "#1a1a2e" }}
+          >
+            <ambientLight intensity={0.4} />
+            <directionalLight
+              position={[3, 5, 2]}
+              intensity={1.5}
+              castShadow
+            />
+            <Suspense fallback={null}>
+              <Model url={modelUrl} onLoaded={handleLeftLoaded} />
+              <Environment preset="studio" environmentIntensity={0.15} />
+            </Suspense>
+            <OrbitControls
+              target={[0, 0, 0]}
+              autoRotate={autoRotate}
+              autoRotateSpeed={0.5}
+              enableDamping
+              dampingFactor={0.1}
+              minDistance={1}
+              maxDistance={30}
+            />
+          </Canvas>
+          {!loadedLeft && <LoadingOverlay label="Loading model..." />}
+        </div>
+      )}
 
-      {/* Right panel: flat RTI view */}
-      <div style={{ flex: 1, position: "relative" }}>
-        <PanelLabel>RTI Light View</PanelLabel>
-        <Canvas
-          shadows
-          camera={{ position: [0, 6, 0.01], fov: 45 }}
-          gl={{ antialias: true, alpha: false }}
-          style={{ background: "#12121e" }}
-        >
-          <ambientLight intensity={0.08} />
-          <directionalLight
-            position={rtiLight}
+      {showRti && (
+        <div style={{ flex: 1, position: "relative" }}>
+          <PanelLabel>RTI Light View</PanelLabel>
+          <CopyEmbedButton view="rti" modelFile={modelFile} />
+          <Canvas
+            shadows
+            camera={{ position: [0, 6, 0.01], fov: 45 }}
+            gl={{ antialias: true, alpha: false }}
+            style={{ background: "#12121e" }}
+          >
+            <ambientLight intensity={0.08} />
+            <directionalLight
+              position={rtiLight}
+              intensity={rtiIntensity}
+              castShadow
+              shadow-mapSize-width={2048}
+              shadow-mapSize-height={2048}
+            />
+            <Suspense fallback={null}>
+              <Model url={modelUrl} flat onLoaded={handleRightLoaded} />
+            </Suspense>
+            <OrbitControls
+              target={[0, 0, 0]}
+              enableRotate={false}
+              enablePan
+              enableZoom
+              minDistance={2}
+              maxDistance={15}
+            />
+          </Canvas>
+
+          <LightControl
+            onChange={handleRtiLightChange}
+            initialX={initialLight[0]}
+            initialY={initialLight[1]}
+            initialZ={initialLight[2]}
             intensity={rtiIntensity}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
+            onIntensityChange={setRtiIntensity}
           />
-          <Suspense fallback={null}>
-            <Model url={modelUrl} flat onLoaded={handleRightLoaded} />
-          </Suspense>
-          <OrbitControls
-            target={[0, 0, 0]}
-            enableRotate={false}
-            enablePan
-            enableZoom
-            minDistance={2}
-            maxDistance={15}
-          />
-        </Canvas>
 
-        <LightControl
-          onChange={handleRtiLightChange}
-          initialX={initialLight[0]}
-          initialY={initialLight[1]}
-          initialZ={initialLight[2]}
-          intensity={rtiIntensity}
-          onIntensityChange={setRtiIntensity}
-        />
-
-        {!loadedRight && <LoadingOverlay label="Loading model..." />}
-      </div>
+          {!loadedRight && <LoadingOverlay label="Loading model..." />}
+        </div>
+      )}
     </div>
   );
 }

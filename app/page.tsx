@@ -41,14 +41,17 @@ function ViewerPage() {
   const params = useSearchParams();
   const autoRotate = params.get("autoRotate") === "true";
   const externalModel = params.get("model");
+  const viewParam = params.get("view") as "3d" | "rti" | null;
 
   const [activeVariant, setActiveVariant] = useState(MODEL_VARIANTS[0].id);
   const current = MODEL_VARIANTS.find((v) => v.id === activeVariant)!;
   const modelUrl = externalModel || current.file;
+  const modelFile = current.file;
+  const isEmbed = !!viewParam;
 
   return (
     <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column" }}>
-      {!externalModel && (
+      {!isEmbed && !externalModel && (
         <div style={styles.tabBar}>
           <div style={styles.tabScroll}>
             {MODEL_VARIANTS.map((v) => (
@@ -72,8 +75,10 @@ function ViewerPage() {
         <Viewer
           key={modelUrl}
           modelUrl={modelUrl}
+          modelFile={modelFile}
           autoRotate={autoRotate}
           initialLight={[3, 5, 2]}
+          view={viewParam || "both"}
         />
       </div>
     </div>
