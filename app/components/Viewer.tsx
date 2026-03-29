@@ -98,6 +98,7 @@ export default function Viewer({
         <div
           style={{
             display: "flex",
+            alignItems: "center",
             background: "#1a1a2e",
             borderBottom: "1px solid rgba(255,255,255,0.08)",
             flexShrink: 0,
@@ -109,6 +110,9 @@ export default function Viewer({
           <TabButton active={activeTab === "rti"} onClick={() => setActiveTab("rti")}>
             RTI Viewer
           </TabButton>
+          <div style={{ marginLeft: "auto", paddingRight: 12 }}>
+            <CopyEmbedButton view={activeTab} modelFile={modelFile} />
+          </div>
         </div>
       )}
 
@@ -121,7 +125,6 @@ export default function Viewer({
             display: (isSingleView ? view === "3d" : activeTab === "3d") ? "block" : "none",
           }}
         >
-          <CopyEmbedButton view="3d" modelFile={modelFile} />
           <Canvas
             shadows
             camera={{ position: [0, 2, 6], fov: 45 }}
@@ -167,7 +170,6 @@ export default function Viewer({
             display: (isSingleView ? view === "rti" : activeTab === "rti") ? "block" : "none",
           }}
         >
-          <CopyEmbedButton view="rti" modelFile={modelFile} />
           <RTIViewer url="/rti/info.json" />
         </div>
       </div>
