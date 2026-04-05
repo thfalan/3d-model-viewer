@@ -89,6 +89,7 @@ export default function Viewer({
     view === "rti" ? "rti" : "3d"
   );
   const [loadedModel, setLoadedModel] = useState(false);
+  const [ambientIntensity, setAmbientIntensity] = useState(0.3);
 
   const handleModelLoaded = useCallback(() => setLoadedModel(true), []);
 
@@ -133,16 +134,16 @@ export default function Viewer({
             gl={{ antialias: true, alpha: false }}
           >
             <SceneBackground color="#000000" />
-            <ambientLight intensity={0.6} />
+            <ambientLight intensity={ambientIntensity} />
             <directionalLight
               position={[3, 5, 2]}
-              intensity={1.2}
+              intensity={0.6}
               castShadow
             />
-            <directionalLight position={[-3, 3, -2]} intensity={0.4} />
+            <directionalLight position={[-3, 3, -2]} intensity={0.2} />
             <Suspense fallback={null}>
               <Model url={modelUrl} mtlUrl={mtlUrl} onLoaded={handleModelLoaded} />
-              <Environment preset="studio" environmentIntensity={0.2} environmentRotation={[0, 0, 0]} background={false} />
+              <Environment preset="studio" environmentIntensity={0.1} environmentRotation={[0, 0, 0]} background={false} />
             </Suspense>
             <OrbitControls
               makeDefault
@@ -162,6 +163,37 @@ export default function Viewer({
             <gridHelper args={[10, 10, "#444", "#333"]} />
           </Canvas>
           {!loadedModel && <LoadingOverlay label="Loading model..." />}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 16,
+              right: 16,
+              zIndex: 10,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 12px",
+              background: "rgba(0,0,0,0.6)",
+              backdropFilter: "blur(8px)",
+              borderRadius: 8,
+              color: "rgba(255,255,255,0.8)",
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: 0.5,
+            }}
+          >
+            <span>Light</span>
+            <input
+              type="range"
+              min="0"
+              max="2"
+              step="0.05"
+              value={ambientIntensity}
+              onChange={(e) => setAmbientIntensity(parseFloat(e.target.value))}
+              style={{ width: 100, cursor: "pointer", accentColor: "#fbbf24" }}
+            />
+            <span style={{ minWidth: 28, textAlign: "right" }}>{ambientIntensity.toFixed(1)}</span>
+          </div>
         </div>
 
         {/* RTI panel */}
