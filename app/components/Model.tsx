@@ -42,13 +42,30 @@ export default function Model({ url, mtlUrl, onLoaded, flat }: ModelProps) {
   }, [obj]);
 
   useEffect(() => {
+    const backMat = new THREE.MeshStandardMaterial({
+      color: "#b5a48a",
+      side: THREE.BackSide,
+      roughness: 0.9,
+      metalness: 0,
+    });
+
+    const toAdd: { parent: THREE.Object3D; mesh: THREE.Mesh }[] = [];
     centered.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+
+        const back = new THREE.Mesh(mesh.geometry, backMat);
+        back.position.copy(mesh.position);
+        back.rotation.copy(mesh.rotation);
+        back.scale.copy(mesh.scale);
+        toAdd.push({ parent: mesh.parent || centered, mesh: back });
       }
     });
+    for (const { parent, mesh } of toAdd) {
+      parent.add(mesh);
+    }
 
     centered.updateMatrixWorld(true);
     const worldBox = new THREE.Box3().setFromObject(centered);
@@ -75,7 +92,7 @@ export default function Model({ url, mtlUrl, onLoaded, flat }: ModelProps) {
   }, [centered, camera, controls, onLoaded]);
 
   return (
-    <group rotation={flat ? [-Math.PI / 2, 0, 0] : undefined}>
+    <group rotation={flat ? [-Math.PI / 2, 0, 0] : [-Math.PI / 2 - Math.PI / 6 + Math.PI / 3, 0, 0]}>
       <primitive object={centered} />
     </group>
   );
