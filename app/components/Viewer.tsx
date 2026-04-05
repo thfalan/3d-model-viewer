@@ -132,7 +132,7 @@ export default function Viewer({
             camera={{ position: [0, 2, 6], fov: 45 }}
             gl={{ antialias: true, alpha: false }}
           >
-            <SceneBackground color="#c8c8cd" />
+            <SceneBackground color="#000000" />
             <ambientLight intensity={0.6} />
             <directionalLight
               position={[3, 5, 2]}
@@ -159,7 +159,7 @@ export default function Viewer({
                 labelColor="black"
               />
             </GizmoHelper>
-            <gridHelper args={[10, 10, "#666", "#888"]} />
+            <gridHelper args={[10, 10, "#444", "#333"]} />
           </Canvas>
           {!loadedModel && <LoadingOverlay label="Loading model..." />}
         </div>
