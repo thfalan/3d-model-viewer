@@ -129,7 +129,7 @@ export default function Viewer({
         >
           <Canvas
             shadows
-            camera={{ position: [0, 2, 6], fov: 45 }}
+            camera={{ fov: 45 }}
             gl={{ antialias: true, alpha: false }}
           >
             <SceneBackground color="#000000" />
@@ -145,12 +145,12 @@ export default function Viewer({
               <Environment preset="studio" environmentIntensity={0.2} environmentRotation={[0, 0, 0]} background={false} />
             </Suspense>
             <OrbitControls
-              target={[0, 0, 0]}
+              makeDefault
               autoRotate={autoRotate}
               autoRotateSpeed={0.5}
               enableDamping
               dampingFactor={0.1}
-              minDistance={1}
+              minDistance={0.5}
               maxDistance={30}
             />
             <GizmoHelper alignment="bottom-left" margin={[60, 60]}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { useLoader, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { OBJLoader, MTLLoader } from "three-stdlib";
@@ -13,8 +13,7 @@ interface ModelProps {
 }
 
 export default function Model({ url, mtlUrl, onLoaded, flat }: ModelProps) {
-  const groupRef = useRef<THREE.Group>(null);
-  const { camera } = useThree();
+  const { camera, controls } = useThree();
   const materials = useLoader(MTLLoader, mtlUrl || "");
   const obj = useLoader(OBJLoader, url, (loader) => {
     if (materials) {
@@ -23,21 +22,27 @@ export default function Model({ url, mtlUrl, onLoaded, flat }: ModelProps) {
     }
   });
 
-  const scene = useMemo(() => obj.clone(true), [obj]);
+  const centered = useMemo(() => {
+    const scene = obj.clone(true);
 
-  useEffect(() => {
     const box = new THREE.Box3().setFromObject(scene);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
 
-    scene.position.sub(center);
-
     const maxDim = Math.max(size.x, size.y, size.z);
-    const targetSize = 4;
-    const scale = targetSize / maxDim;
-    scene.scale.setScalar(scale);
+    const scale = 4 / maxDim;
 
-    scene.traverse((child) => {
+    const wrapper = new THREE.Group();
+    wrapper.add(scene);
+
+    scene.position.set(-center.x, -center.y, -center.z);
+    wrapper.scale.setScalar(scale);
+
+    return wrapper;
+  }, [obj]);
+
+  useEffect(() => {
+    centered.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         mesh.castShadow = true;
@@ -45,16 +50,33 @@ export default function Model({ url, mtlUrl, onLoaded, flat }: ModelProps) {
       }
     });
 
-    const dist = targetSize * 1.8;
-    camera.position.set(dist * 0.6, dist * 0.4, dist);
-    camera.lookAt(0, 0, 0);
+    centered.updateMatrixWorld(true);
+    const worldBox = new THREE.Box3().setFromObject(centered);
+    const worldCenter = worldBox.getCenter(new THREE.Vector3());
+    const worldSize = worldBox.getSize(new THREE.Vector3());
+    const maxDim = Math.max(worldSize.x, worldSize.y, worldSize.z);
+
+    // Point OrbitControls at the model center so zoom targets it
+    const orbitControls = controls as unknown as { target: THREE.Vector3; update: () => void };
+    if (orbitControls?.target) {
+      orbitControls.target.copy(worldCenter);
+      orbitControls.update();
+    }
+
+    const dist = maxDim * 1.8;
+    camera.position.set(
+      worldCenter.x + dist * 0.5,
+      worldCenter.y + dist * 0.8,
+      worldCenter.z + dist
+    );
+    camera.lookAt(worldCenter);
 
     onLoaded?.();
-  }, [scene, camera, onLoaded]);
+  }, [centered, camera, controls, onLoaded]);
 
   return (
-    <group ref={groupRef} rotation={flat ? [-Math.PI / 2, 0, 0] : undefined}>
-      <primitive object={scene} />
+    <group rotation={flat ? [-Math.PI / 2, 0, 0] : undefined}>
+      <primitive object={centered} />
     </group>
   );
 }
