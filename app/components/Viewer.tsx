@@ -10,6 +10,7 @@ import RTIViewer from "./RTIViewer";
 
 interface ViewerProps {
   modelUrl: string;
+  mtlUrl?: string;
   modelFile: string;
   autoRotate: boolean;
   initialLight: [number, number, number];
@@ -79,6 +80,7 @@ function TabButton({
 
 export default function Viewer({
   modelUrl,
+  mtlUrl,
   modelFile,
   autoRotate,
   view = "both",
@@ -139,7 +141,7 @@ export default function Viewer({
             />
             <directionalLight position={[-3, 3, -2]} intensity={0.4} />
             <Suspense fallback={null}>
-              <Model url={modelUrl} onLoaded={handleModelLoaded} />
+              <Model url={modelUrl} mtlUrl={mtlUrl} onLoaded={handleModelLoaded} />
               <Environment preset="studio" environmentIntensity={0.2} environmentRotation={[0, 0, 0]} background={false} />
             </Suspense>
             <OrbitControls

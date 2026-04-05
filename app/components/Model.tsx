@@ -4,70 +4,40 @@ import { useEffect, useMemo } from "react";
 import { Center } from "@react-three/drei";
 import { useLoader } from "@react-three/fiber";
 import * as THREE from "three";
-import { GLTFLoader } from "three-stdlib";
-import { MeshoptDecoder } from "meshoptimizer";
+import { OBJLoader, MTLLoader } from "three-stdlib";
 
 interface ModelProps {
   url: string;
+  mtlUrl?: string;
   onLoaded?: () => void;
   flat?: boolean;
 }
 
-export default function Model({ url, onLoaded, flat }: ModelProps) {
-  const gltf = useLoader(GLTFLoader, url, (loader) => {
-    const dracoLoader = new (
-      require("three-stdlib").DRACOLoader
-    )() as InstanceType<typeof import("three-stdlib").DRACOLoader>;
-    dracoLoader.setDecoderPath(
-      "https://www.gstatic.com/draco/versioned/decoders/1.5.7/"
-    );
-    loader.setDRACOLoader(dracoLoader);
-    loader.setMeshoptDecoder(MeshoptDecoder);
+export default function Model({ url, mtlUrl, onLoaded, flat }: ModelProps) {
+  const materials = useLoader(MTLLoader, mtlUrl || "");
+  const obj = useLoader(OBJLoader, url, (loader) => {
+    if (materials) {
+      materials.preload();
+      loader.setMaterials(materials);
+    }
   });
 
-  const clonedScene = useMemo(() => gltf.scene.clone(true), [gltf.scene]);
+  const scene = useMemo(() => obj.clone(true), [obj]);
 
   useEffect(() => {
-    clonedScene.traverse((child) => {
+    scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        const geom = mesh.geometry;
-        const hasVertexColors = !!geom.attributes.color;
-
-        if (Array.isArray(mesh.material)) {
-          mesh.material = mesh.material.map((m) => m.clone());
-        } else {
-          mesh.material = mesh.material.clone();
-        }
-
-        const mats = Array.isArray(mesh.material)
-          ? mesh.material
-          : [mesh.material];
-
-        for (const mat of mats) {
-          if (hasVertexColors) {
-            (mat as THREE.MeshStandardMaterial).vertexColors = true;
-          }
-          if (
-            mat instanceof THREE.MeshStandardMaterial ||
-            mat instanceof THREE.MeshPhysicalMaterial
-          ) {
-            mat.roughness = 0.7;
-            mat.metalness = 0.0;
-          }
-        }
-
         mesh.castShadow = true;
         mesh.receiveShadow = true;
       }
     });
-
     onLoaded?.();
-  }, [clonedScene, onLoaded]);
+  }, [scene, onLoaded]);
 
   return (
     <Center rotation={flat ? [-Math.PI / 2, 0, 0] : undefined}>
-      <primitive object={clonedScene} />
+      <primitive object={scene} />
     </Center>
   );
 }
